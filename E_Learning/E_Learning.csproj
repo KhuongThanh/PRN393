@@ -46,10 +46,6 @@
     <Folder Include="Domain\Users\Dtos\" />
     <Folder Include="Domain\Users\Interface\" />
     <Folder Include="Domain\Users\Services\" />
-    <Folder Include="Domain\Vocabulary\Controllers\" />
-    <Folder Include="Domain\Vocabulary\Dtos\" />
-    <Folder Include="Domain\Vocabulary\Interface\" />
-    <Folder Include="Domain\Vocabulary\Services\" />
     <Folder Include="wwwroot\images\" />
   </ItemGroup>
 

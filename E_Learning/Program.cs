@@ -2,6 +2,8 @@ using E_Learning.Data;
 using E_Learning.Domain.Auth.Configurations;
 using E_Learning.Domain.Auth.Interface;
 using E_Learning.Domain.Auth.Services;
+using E_Learning.Domain.Vocabulary.Interface;
+using E_Learning.Domain.Vocabulary.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -44,6 +46,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
+builder.Services.AddScoped<IVocabularyTopicService, VocabularyTopicService>();
+builder.Services.AddScoped<IVocabularyWordService, VocabularyWordService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
