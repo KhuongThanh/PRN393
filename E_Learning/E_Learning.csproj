@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Domain\Admin\Controllers\" />
+    <Folder Include="Domain\Admin\Interface\" />
+    <Folder Include="Domain\Admin\Dtos\" />
+    <Folder Include="Domain\Admin\Services\" />
+    <Folder Include="Domain\Favorite\Controllers\" />
+    <Folder Include="Domain\Favorite\Dtos\" />
+    <Folder Include="Domain\Favorite\Interface\" />
+    <Folder Include="Domain\Favorite\Services\" />
+    <Folder Include="Domain\Progress\Controllers\" />
+    <Folder Include="Domain\Progress\Dtos\" />
+    <Folder Include="Domain\Progress\Interface\" />
+    <Folder Include="Domain\Progress\Services\" />
+    <Folder Include="Domain\Quiz\Controllers\" />
+    <Folder Include="Domain\Quiz\Dtos\" />
+    <Folder Include="Domain\Quiz\Interface\" />
+    <Folder Include="Domain\Quiz\Services\" />
+    <Folder Include="Domain\Study\Controllers\" />
+    <Folder Include="Domain\Study\Dtos\" />
+    <Folder Include="Domain\Study\Interface\" />
+    <Folder Include="Domain\Study\Services\" />
+    <Folder Include="Domain\Users\Controllers\" />
+    <Folder Include="Domain\Users\Dtos\" />
+    <Folder Include="Domain\Users\Interface\" />
+    <Folder Include="Domain\Users\Services\" />
+    <Folder Include="Domain\Vocabulary\Controllers\" />
+    <Folder Include="Domain\Vocabulary\Dtos\" />
+    <Folder Include="Domain\Vocabulary\Interface\" />
+    <Folder Include="Domain\Vocabulary\Services\" />
+    <Folder Include="wwwroot\images\" />
+  </ItemGroup>
+
+</Project>
