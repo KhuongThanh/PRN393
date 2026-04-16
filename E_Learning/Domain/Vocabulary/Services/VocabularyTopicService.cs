@@ -8,14 +8,20 @@ namespace E_Learning.Domain.Vocabulary.Services
     public class VocabularyTopicService : IVocabularyTopicService
     {
         private readonly AppDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public VocabularyTopicService(AppDbContext context)
+
+        public VocabularyTopicService(AppDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         public async Task<List<TopicItemResponse>> GetTopicsAsync()
         {
+            var defaultTopicImageUrl =
+                _configuration["DefaultImages:TopicImageUrl"] ?? "/images/default-topic.jpg";
+
             var topics = await _context.VocabularyTopics
                 .AsNoTracking()
                 .Where(x => x.IsActive == true)
@@ -25,7 +31,9 @@ namespace E_Learning.Domain.Vocabulary.Services
                     TopicId = x.TopicId,
                     TopicName = x.TopicName,
                     Description = x.Description,
-                    ImageUrl = x.ImageUrl,
+                    ImageUrl = string.IsNullOrWhiteSpace(x.ImageUrl)
+                        ? defaultTopicImageUrl
+                        : x.ImageUrl,
                     DisplayOrder = x.DisplayOrder
                 })
                 .ToListAsync();

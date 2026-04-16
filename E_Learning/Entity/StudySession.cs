@@ -23,6 +23,10 @@ public partial class StudySession
 
     public int NotRememberedCount { get; set; }
 
+    public string? SourceName { get; set; }
+
+    public string SourceType { get; set; } = null!;
+
     public virtual ICollection<StudySessionDetail> StudySessionDetails { get; set; } = new List<StudySessionDetail>();
 
     public virtual VocabularyTopic? Topic { get; set; }

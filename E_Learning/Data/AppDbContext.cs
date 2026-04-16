@@ -160,6 +160,10 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.SessionType)
                 .HasMaxLength(20)
                 .HasDefaultValue("Flashcard");
+            entity.Property(e => e.SourceName).HasMaxLength(100);
+            entity.Property(e => e.SourceType)
+                .HasMaxLength(20)
+                .HasDefaultValue("Topic");
             entity.Property(e => e.StartedAt).HasDefaultValueSql("(sysdatetime())");
 
             entity.HasOne(d => d.Topic).WithMany(p => p.StudySessions).HasForeignKey(d => d.TopicId);
