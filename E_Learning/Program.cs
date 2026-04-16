@@ -2,6 +2,12 @@ using E_Learning.Data;
 using E_Learning.Domain.Auth.Configurations;
 using E_Learning.Domain.Auth.Interface;
 using E_Learning.Domain.Auth.Services;
+using E_Learning.Domain.Favorite.Interface;
+using E_Learning.Domain.Favorite.Services;
+using E_Learning.Domain.Progress.Interface;
+using E_Learning.Domain.Progress.Services;
+using E_Learning.Domain.Study.Interface;
+using E_Learning.Domain.Study.Services;
 using E_Learning.Domain.Vocabulary.Interface;
 using E_Learning.Domain.Vocabulary.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -45,9 +51,11 @@ builder.Services.AddAuthorization();
 // DI
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
-
+builder.Services.AddScoped<IFavoriteService, FavoriteService>();
 builder.Services.AddScoped<IVocabularyTopicService, VocabularyTopicService>();
 builder.Services.AddScoped<IVocabularyWordService, VocabularyWordService>();
+builder.Services.AddScoped<IUserWordProgressService, UserWordProgressService>();
+builder.Services.AddScoped<IStudySessionService, StudySessionService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 

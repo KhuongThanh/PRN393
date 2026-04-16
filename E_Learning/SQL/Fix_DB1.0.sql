@@ -1,0 +1,4 @@
+﻿ALTER TABLE StudySessions
+ADD SourceName NVARCHAR(100) NULL;
+ALTER TABLE StudySessions
+ADD SourceType NVARCHAR(20) NOT NULL CONSTRAINT DF_StudySessions_SourceType DEFAULT 'Topic';
