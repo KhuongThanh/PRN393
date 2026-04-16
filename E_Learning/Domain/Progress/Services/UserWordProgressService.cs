@@ -217,5 +217,62 @@ namespace E_Learning.Domain.Progress.Services
                 CompletionRate = totalWords == 0 ? 0 : Math.Round((double)learnedWords / totalWords * 100, 2)
             };
         }
+
+        public async Task UpdateFromQuizAsync(Guid attemptId, Guid userId)
+        {
+            var answerDetails = await
+                (from a in _context.QuizAttemptAnswers
+                 join q in _context.QuizQuestions
+                     on a.QuestionId equals q.QuestionId
+                 where a.AttemptId == attemptId
+                       && q.WordId != null
+                 select new
+                 {
+                     WordId = q.WordId.Value,
+                     a.IsCorrect
+                 })
+                .ToListAsync();
+
+            if (!answerDetails.Any())
+                return;
+
+            foreach (var item in answerDetails)
+            {
+                var progress = await _context.UserWordProgresses
+                    .FirstOrDefaultAsync(x => x.UserId == userId && x.WordId == item.WordId);
+
+                if (progress == null)
+                {
+                    progress = new UserWordProgress
+                    {
+                        ProgressId = Guid.NewGuid(),
+                        UserId = userId,
+                        WordId = item.WordId,
+                        IsLearned = false,
+                        CorrectCount = 0,
+                        IncorrectCount = 0,
+                        LastStudiedAt = DateTime.UtcNow,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = null
+                    };
+
+                    _context.UserWordProgresses.Add(progress);
+                }
+
+                if (item.IsCorrect)
+                    progress.CorrectCount++;
+                else
+                    progress.IncorrectCount++;
+
+                progress.LastStudiedAt = DateTime.UtcNow;
+                progress.UpdatedAt = DateTime.UtcNow;
+
+                // Rule tạm: đúng 3 lần thì coi như đã học
+                if (progress.CorrectCount >= 3)
+                    progress.IsLearned = true;
+            }
+
+            await _context.SaveChangesAsync();
+        }
     }
 }

@@ -8,5 +8,6 @@ namespace E_Learning.Domain.Progress.Interface
     Task<WordProgressDto> GetWordProgressAsync(Guid userId, Guid wordId);
     Task<WordProgressDto> UpdateWordProgressAsync(Guid userId, Guid wordId, UpdateWordProgressRequest request);
     Task<TopicProgressDto> GetTopicProgressAsync(Guid userId, Guid topicId);
-}
+    Task UpdateFromQuizAsync(Guid attemptId, Guid userId);
+    }
 }

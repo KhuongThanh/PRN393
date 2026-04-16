@@ -26,10 +26,6 @@
     <Folder Include="Domain\Admin\Interface\" />
     <Folder Include="Domain\Admin\Dtos\" />
     <Folder Include="Domain\Admin\Services\" />
-    <Folder Include="Domain\Quiz\Controllers\" />
-    <Folder Include="Domain\Quiz\Dtos\" />
-    <Folder Include="Domain\Quiz\Interface\" />
-    <Folder Include="Domain\Quiz\Services\" />
     <Folder Include="Domain\Users\Controllers\" />
     <Folder Include="Domain\Users\Dtos\" />
     <Folder Include="Domain\Users\Interface\" />
