@@ -22,10 +22,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Domain\Admin\Controllers\" />
-    <Folder Include="Domain\Admin\Interface\" />
-    <Folder Include="Domain\Admin\Dtos\" />
-    <Folder Include="Domain\Admin\Services\" />
     <Folder Include="Domain\Users\Controllers\" />
     <Folder Include="Domain\Users\Dtos\" />
     <Folder Include="Domain\Users\Interface\" />
