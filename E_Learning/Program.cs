@@ -6,6 +6,8 @@ using E_Learning.Domain.Favorite.Interface;
 using E_Learning.Domain.Favorite.Services;
 using E_Learning.Domain.Progress.Interface;
 using E_Learning.Domain.Progress.Services;
+using E_Learning.Domain.Quiz.Interface;
+using E_Learning.Domain.Quiz.Services;
 using E_Learning.Domain.Study.Interface;
 using E_Learning.Domain.Study.Services;
 using E_Learning.Domain.Vocabulary.Interface;
@@ -56,6 +58,8 @@ builder.Services.AddScoped<IVocabularyTopicService, VocabularyTopicService>();
 builder.Services.AddScoped<IVocabularyWordService, VocabularyWordService>();
 builder.Services.AddScoped<IUserWordProgressService, UserWordProgressService>();
 builder.Services.AddScoped<IStudySessionService, StudySessionService>();
+builder.Services.AddScoped<IQuizCatalogService, QuizCatalogService>();
+builder.Services.AddScoped<IQuizAttemptService, QuizAttemptService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
