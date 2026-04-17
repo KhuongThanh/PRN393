@@ -1,4 +1,8 @@
 using E_Learning.Data;
+using E_Learning.Domain.Admin.Options.Interface;
+using E_Learning.Domain.Admin.Options.Services;
+using E_Learning.Domain.Admin.Questions.Interface;
+using E_Learning.Domain.Admin.Questions.Services;
 using E_Learning.Domain.Admin.Quizzes.Interface;
 using E_Learning.Domain.Admin.Quizzes.Services;
 using E_Learning.Domain.Admin.Topics.Interface;
@@ -72,6 +76,8 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IAdminTopicService, AdminTopicService>();
 builder.Services.AddScoped<IAdminWordService, AdminWordService>();
 builder.Services.AddScoped<IAdminQuizService, AdminQuizService>();
+builder.Services.AddScoped<IAdminQuestionService, AdminQuestionService>();
+builder.Services.AddScoped<IAdminOptionService, AdminOptionService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
