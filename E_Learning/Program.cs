@@ -1,7 +1,15 @@
 using E_Learning.Data;
+using E_Learning.Domain.Admin.Quizzes.Interface;
+using E_Learning.Domain.Admin.Quizzes.Services;
+using E_Learning.Domain.Admin.Topics.Interface;
+using E_Learning.Domain.Admin.Topics.Services;
+using E_Learning.Domain.Admin.Words.Interface;
+using E_Learning.Domain.Admin.Words.Services;
 using E_Learning.Domain.Auth.Configurations;
 using E_Learning.Domain.Auth.Interface;
 using E_Learning.Domain.Auth.Services;
+using E_Learning.Domain.Dashboard.Interface;
+using E_Learning.Domain.Dashboard.Services;
 using E_Learning.Domain.Favorite.Interface;
 using E_Learning.Domain.Favorite.Services;
 using E_Learning.Domain.Progress.Interface;
@@ -60,6 +68,10 @@ builder.Services.AddScoped<IUserWordProgressService, UserWordProgressService>();
 builder.Services.AddScoped<IStudySessionService, StudySessionService>();
 builder.Services.AddScoped<IQuizCatalogService, QuizCatalogService>();
 builder.Services.AddScoped<IQuizAttemptService, QuizAttemptService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IAdminTopicService, AdminTopicService>();
+builder.Services.AddScoped<IAdminWordService, AdminWordService>();
+builder.Services.AddScoped<IAdminQuizService, AdminQuizService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
