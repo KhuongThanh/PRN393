@@ -224,8 +224,8 @@ namespace E_Learning.Domain.Auth.Services
                 IsActive = user.IsActive
             };
         }
-    
-     private string ResolveAvatarUrl(string? avatarUrl)
+
+        private string ResolveAvatarUrl(string? avatarUrl)
         {
             var request = _httpContextAccessor.HttpContext?.Request;
 
@@ -246,6 +246,12 @@ namespace E_Learning.Domain.Auth.Services
                 return rawValue;
 
             return $"{request.Scheme}://{request.Host}{rawValue}";
+        }
+        public async Task LogoutAsync(Guid userId)
+        {
+            // For JWT, logout is typically handled on the client side by deleting the token.
+            // Optionally, you can implement token blacklisting here if needed.
+            await Task.CompletedTask;
         }
     }
 }
