@@ -11,7 +11,7 @@ class AuthProvider extends ChangeNotifier {
   String? token;
   String? errorMessage;
 
-  bool get isLoggedIn => token != null && token!.isNotEmpty;
+  bool get isLoggedIn => token?.isNotEmpty ?? false;
 
   Future<void> loadToken() async {
     token = await AppPrefs.getToken();
@@ -21,63 +21,27 @@ class AuthProvider extends ChangeNotifier {
   Future<bool> login({
     required String usernameOrEmail,
     required String password,
-  }) async {
-    isLoading = true;
-    errorMessage = null;
-    notifyListeners();
-
-    try {
-    final response = await http.post(
-  Uri.parse('${ApiConstants.baseUrl}/Auth/login'),
-  headers: {'Content-Type': 'application/json'},
-  body: jsonEncode({
-    'usernameOrEmail': usernameOrEmail,
-    'password': password,
-  }),
-);
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = jsonDecode(response.body);
-
-        final receivedToken =
-            data['token'] ??
-            data['accessToken'] ??
-            data['access_token'] ??
-            '';
-
-        if (receivedToken.toString().isEmpty) {
-          errorMessage = 'Login thành công nhưng không nhận được token.';
-          return false;
-        }
-
-        token = receivedToken.toString();
-        await AppPrefs.saveToken(token!);
-        return true;
-      } else {
-        try {
-          final data = jsonDecode(response.body);
-          errorMessage =
-              data['message']?.toString() ??
-              data['error']?.toString() ??
-              'Đăng nhập thất bại.';
-        } catch (_) {
-          errorMessage = 'Đăng nhập thất bại. Mã lỗi: ${response.statusCode}';
-        }
-        return false;
-      }
-    } catch (e) {
-      errorMessage = 'Không kết nối được server: $e';
-      return false;
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
+  }) {
+    return _authenticate(
+      endpoint: '/Auth/login',
+      body: {'usernameOrEmail': usernameOrEmail, 'password': password},
+    );
   }
 
   Future<bool> signup({
     required String username,
     required String email,
     required String password,
+  }) {
+    return _authenticate(
+      endpoint: '/Auth/register',
+      body: {'username': username, 'email': email, 'password': password},
+    );
+  }
+
+  Future<bool> _authenticate({
+    required String endpoint,
+    required Map<String, dynamic> body,
   }) async {
     isLoading = true;
     errorMessage = null;
@@ -85,31 +49,31 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final response = await http.post(
-  Uri.parse('${ApiConstants.baseUrl}/Auth/register'),
-  headers: {'Content-Type': 'application/json'},
-  body: jsonEncode({
-    'username': username,
-    'email': email,
-    'password': password,
-  }),
-);
+        Uri.parse('${ApiConstants.baseUrl}$endpoint'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      final data = _tryDecodeJson(response.body);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        return true;
-      } else {
-        try {
-          final data = jsonDecode(response.body);
+        final receivedToken = _extractToken(data);
+
+        if (receivedToken.isEmpty) {
           errorMessage =
-              data['message']?.toString() ??
-              data['error']?.toString() ??
-              'Đăng ký thất bại.';
-        } catch (_) {
-          errorMessage = 'Đăng ký thất bại. Mã lỗi: ${response.statusCode}';
+              'Xac thuc thanh cong nhung khong nhan duoc token tu server.';
+          return false;
         }
-        return false;
+
+        token = receivedToken;
+        await AppPrefs.saveToken(token!);
+        return true;
       }
+
+      errorMessage = _extractErrorMessage(data, response.statusCode);
+      return false;
     } catch (e) {
-      errorMessage = 'Không kết nối được server: $e';
+      errorMessage = 'Khong ket noi duoc toi server: $e';
       return false;
     } finally {
       isLoading = false;
@@ -117,8 +81,54 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Map<String, dynamic>? _tryDecodeJson(String rawBody) {
+    if (rawBody.trim().isEmpty) {
+      return null;
+    }
+
+    try {
+      final decoded = jsonDecode(rawBody);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+    } catch (_) {
+      return null;
+    }
+
+    return null;
+  }
+
+  String _extractToken(Map<String, dynamic>? data) {
+    if (data == null) {
+      return '';
+    }
+
+    final dynamic receivedToken =
+        data['token'] ??
+        data['Token'] ??
+        data['accessToken'] ??
+        data['access_token'];
+
+    return receivedToken?.toString() ?? '';
+  }
+
+  String _extractErrorMessage(Map<String, dynamic>? data, int statusCode) {
+    final message =
+        data?['message']?.toString() ??
+        data?['Message']?.toString() ??
+        data?['error']?.toString() ??
+        data?['Error']?.toString();
+
+    if (message != null && message.trim().isNotEmpty) {
+      return message;
+    }
+
+    return 'Yeu cau that bai. Ma loi: $statusCode';
+  }
+
   Future<void> logout() async {
     token = null;
+    errorMessage = null;
     await AppPrefs.clearToken();
     notifyListeners();
   }

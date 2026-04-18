@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../../app/routes.dart';
+import '../providers/auth_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -15,14 +19,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   int step = 1;
   String selectedRole = 'r1';
   int goal = 10;
-  bool loading = false;
   String? focusedKey;
 
-  final Map<String, String> dob = {
-    'm': '',
-    'd': '',
-    'y': '',
-  };
+  final Map<String, String> dob = {'m': '', 'd': '', 'y': ''};
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController userController = TextEditingController();
@@ -103,19 +102,98 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  bool _validateStep1() {
+    final monthText = dob['m']!.trim();
+    final dayText = dob['d']!.trim();
+    final yearText = dob['y']!.trim();
+
+    if (monthText.isEmpty || dayText.isEmpty || yearText.isEmpty) {
+      _showMessage('Vui long nhap day du ngay sinh.');
+      return false;
+    }
+
+    final month = int.tryParse(monthText);
+    final day = int.tryParse(dayText);
+    final year = int.tryParse(yearText);
+    final currentYear = DateTime.now().year;
+
+    if (month == null || month < 1 || month > 12) {
+      _showMessage('Thang sinh khong hop le.');
+      return false;
+    }
+
+    if (day == null || day < 1 || day > 31) {
+      _showMessage('Ngay sinh khong hop le.');
+      return false;
+    }
+
+    if (year == null || year < 1900 || year > currentYear) {
+      _showMessage('Nam sinh khong hop le.');
+      return false;
+    }
+
+    final email = emailController.text.trim();
+    final username = userController.text.trim();
+    final password = passwordController.text;
+
+    if (email.isEmpty || username.isEmpty || password.isEmpty) {
+      _showMessage('Vui long nhap day du email, ten dang nhap va mat khau.');
+      return false;
+    }
+
+    if (!email.contains('@')) {
+      _showMessage('Email khong hop le.');
+      return false;
+    }
+
+    if (password.length < 6) {
+      _showMessage('Mat khau phai co it nhat 6 ky tu.');
+      return false;
+    }
+
+    return true;
+  }
+
   Future<void> handleNext() async {
-    if (step < 3) {
+    if (step == 1) {
+      if (!_validateStep1()) {
+        return;
+      }
+
       setState(() => step += 1);
       return;
     }
 
-    setState(() => loading = true);
-    await Future.delayed(const Duration(milliseconds: 1200));
+    if (step == 2) {
+      setState(() => step += 1);
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.signup(
+      username: userController.text.trim(),
+      email: emailController.text.trim(),
+      password: passwordController.text,
+    );
 
     if (!mounted) return;
-    setState(() => loading = false);
 
-    Navigator.pushReplacementNamed(context, '/home');
+    if (success) {
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
+      return;
+    }
+
+    _showMessage(
+      authProvider.errorMessage ?? 'Dang ky that bai. Vui long thu lai.',
+    );
   }
 
   Map<String, dynamic> get selectedRoleData =>
@@ -140,6 +218,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final isLoading = authProvider.isLoading;
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
@@ -162,17 +243,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: loading ? null : handleNext,
+                          onPressed: isLoading ? null : handleNext,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                loading ? const Color(0xFF9BA7FF) : qBlue,
+                            backgroundColor: isLoading
+                                ? const Color(0xFF9BA7FF)
+                                : qBlue,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: loading
+                          child: isLoading
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
@@ -192,6 +274,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                         ),
                       ),
+                      if (authProvider.errorMessage != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF1F2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFFDA4AF)),
+                          ),
+                          child: Text(
+                            authProvider.errorMessage!,
+                            style: const TextStyle(
+                              color: Color(0xFF9F1239),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                       if (step == 1) ...[
                         const SizedBox(height: 12),
                         RichText(
@@ -231,22 +336,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           children: [
                             const Text(
                               'Đã có tài khoản?',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: qGray,
-                              ),
+                              style: TextStyle(fontSize: 13, color: qGray),
                             ),
                             TextButton(
                               onPressed: () {
-                                Navigator.pushReplacementNamed(context, '/');
+                                Navigator.pushReplacementNamed(
+                                  context,
+                                  AppRoutes.login,
+                                );
                               },
                               style: TextButton.styleFrom(
                                 foregroundColor: qBlue,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
                                 minimumSize: const Size(0, 0),
-                                tapTargetSize:
-                                    MaterialTapTargetSize.shrinkWrap,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
                               child: const Text(
                                 'Đăng nhập',
@@ -280,7 +385,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               if (step > 1) {
                 setState(() => step -= 1);
               } else {
-                Navigator.pushReplacementNamed(context, '/');
+                Navigator.pushReplacementNamed(context, AppRoutes.login);
               }
             },
             child: Container(
@@ -290,11 +395,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 color: Color(0xFFF0F2FF),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.arrow_back,
-                size: 18,
-                color: qDark,
-              ),
+              child: const Icon(Icons.arrow_back, size: 18, color: qDark),
             ),
           ),
           const SizedBox(width: 12),
@@ -307,9 +408,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     margin: EdgeInsets.only(right: s < 3 ? 8 : 0),
                     height: 4,
                     decoration: BoxDecoration(
-                      color: s <= step
-                          ? qBlue
-                          : const Color(0xFFECEEF5),
+                      color: s <= step ? qBlue : const Color(0xFFECEEF5),
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
@@ -332,6 +431,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildStep1() {
+    final isLoading = context.watch<AuthProvider>().isLoading;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -346,10 +447,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: 4),
         const Text(
           'Tham gia hàng triệu học sinh đang dùng Quizlet',
-          style: TextStyle(
-            fontSize: 13,
-            color: qGray,
-          ),
+          style: TextStyle(fontSize: 13, color: qGray),
         ),
         const SizedBox(height: 24),
         const _FieldLabel('Ngày sinh'),
@@ -362,6 +460,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 placeholder: 'Tháng',
                 focusNode: monthFocus,
                 fieldKey: 'm',
+                enabled: !isLoading,
                 maxLength: 2,
                 onChanged: (value) {
                   setState(() => dob['m'] = value);
@@ -375,6 +474,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 placeholder: 'Ngày',
                 focusNode: dayFocus,
                 fieldKey: 'd',
+                enabled: !isLoading,
                 maxLength: 2,
                 onChanged: (value) {
                   setState(() => dob['d'] = value);
@@ -389,6 +489,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 placeholder: 'Năm',
                 focusNode: yearFocus,
                 fieldKey: 'y',
+                enabled: !isLoading,
                 maxLength: 4,
                 onChanged: (value) {
                   setState(() => dob['y'] = value);
@@ -407,6 +508,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           hintText: 'email@example.com',
           keyboardType: TextInputType.emailAddress,
           obscureText: false,
+          enabled: !isLoading,
         ),
         const SizedBox(height: 16),
         const _FieldLabel('Tên người dùng'),
@@ -418,6 +520,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           hintText: 'tên_của_bạn',
           keyboardType: TextInputType.text,
           obscureText: false,
+          enabled: !isLoading,
         ),
         const SizedBox(height: 16),
         const _FieldLabel('Mật khẩu'),
@@ -429,6 +532,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           hintText: '6 ký tự trở lên',
           keyboardType: TextInputType.visiblePassword,
           obscureText: true,
+          enabled: !isLoading,
+          onSubmitted: (_) => handleNext(),
         ),
       ],
     );
@@ -449,10 +554,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: 4),
         const Text(
           'Chúng tôi sẽ tùy chỉnh trải nghiệm cho bạn',
-          style: TextStyle(
-            fontSize: 13,
-            color: qGray,
-          ),
+          style: TextStyle(fontSize: 13, color: qGray),
         ),
         const SizedBox(height: 20),
         Column(
@@ -466,16 +568,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   setState(() => selectedRole = role['roleId'] as String);
                 },
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
-                    color:
-                        isSelected ? const Color(0xFFF0F2FF) : Colors.white,
+                    color: isSelected ? const Color(0xFFF0F2FF) : Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected
-                          ? qBlue
-                          : const Color(0xFFECEEF5),
+                      color: isSelected ? qBlue : const Color(0xFFECEEF5),
                       width: 2,
                     ),
                     boxShadow: [
@@ -542,9 +643,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         width: 24,
                         height: 24,
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? qBlue
-                              : const Color(0xFFECEEF5),
+                          color: isSelected ? qBlue : const Color(0xFFECEEF5),
                           shape: BoxShape.circle,
                         ),
                         child: isSelected
@@ -581,10 +680,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: 4),
         const Text(
           'Bạn muốn học bao nhiêu từ mỗi ngày? (UserProfiles.TargetDailyWords)',
-          style: TextStyle(
-            fontSize: 13,
-            color: qGray,
-          ),
+          style: TextStyle(fontSize: 13, color: qGray),
         ),
         const SizedBox(height: 24),
         GridView.builder(
@@ -608,13 +704,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? const Color(0xFFF0F2FF)
-                      : Colors.white,
+                  color: isSelected ? const Color(0xFFF0F2FF) : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color:
-                        isSelected ? qBlue : const Color(0xFFECEEF5),
+                    color: isSelected ? qBlue : const Color(0xFFECEEF5),
                     width: 2,
                   ),
                   boxShadow: isSelected
@@ -650,10 +743,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 2),
                     Text(
                       _goalDescription(g),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: qGray,
-                      ),
+                      style: const TextStyle(fontSize: 11, color: qGray),
                     ),
                     if (isSelected) ...[
                       const SizedBox(height: 8),
@@ -683,18 +773,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           decoration: BoxDecoration(
             color: const Color(0xFFFFF9E6),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFFFFCD1F),
-              width: 1.5,
-            ),
+            border: Border.all(color: const Color(0xFFFFCD1F), width: 1.5),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                '💡',
-                style: TextStyle(fontSize: 20),
-              ),
+              const Text('💡', style: TextStyle(fontSize: 20)),
               const SizedBox(width: 10),
               Expanded(
                 child: RichText(
@@ -708,9 +792,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const TextSpan(text: 'Học '),
                       TextSpan(
                         text: '$goal từ mỗi ngày',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       const TextSpan(
                         text:
@@ -729,10 +811,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           decoration: BoxDecoration(
             color: const Color(0xFFF0F2FF),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFFC7CFFE),
-              width: 1.5,
-            ),
+            border: Border.all(color: const Color(0xFFC7CFFE), width: 1.5),
           ),
           child: Row(
             children: [
@@ -776,10 +855,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 child: const Text(
                   'Thay đổi',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -794,45 +870,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required String placeholder,
     required FocusNode focusNode,
     required String fieldKey,
+    bool enabled = true,
     required int maxLength,
     required ValueChanged<String> onChanged,
   }) {
     return TextField(
       focusNode: focusNode,
       onChanged: onChanged,
+      enabled: enabled,
       maxLength: maxLength,
       keyboardType: TextInputType.number,
-      buildCounter: (
-        BuildContext context, {
-        required int currentLength,
-        required bool isFocused,
-        required int? maxLength,
-      }) {
-        return null;
-      },
+      buildCounter:
+          (
+            BuildContext context, {
+            required int currentLength,
+            required bool isFocused,
+            required int? maxLength,
+          }) {
+            return null;
+          },
       decoration: InputDecoration(
         hintText: placeholder,
-        hintStyle: const TextStyle(
-          color: Color(0xFF98A1B3),
-          fontSize: 14,
-        ),
+        hintStyle: const TextStyle(color: Color(0xFF98A1B3), fontSize: 14),
         filled: true,
         fillColor: _fillColor(fieldKey),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: _borderColor(fieldKey),
-            width: 2,
-          ),
+          borderSide: BorderSide(color: _borderColor(fieldKey), width: 2),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: qBlue,
-            width: 2,
-          ),
+          borderSide: const BorderSide(color: qBlue, width: 2),
         ),
       ),
       controller: TextEditingController(text: controllerValue)
@@ -852,35 +924,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required String hintText,
     required TextInputType keyboardType,
     required bool obscureText,
+    bool enabled = true,
+    ValueChanged<String>? onSubmitted,
   }) {
     return TextField(
       controller: controller,
       focusNode: focusNode,
       keyboardType: keyboardType,
       obscureText: obscureText,
+      enabled: enabled,
+      autocorrect: false,
+      enableSuggestions: !obscureText,
+      textInputAction: obscureText
+          ? TextInputAction.done
+          : TextInputAction.next,
+      onSubmitted: onSubmitted,
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: const TextStyle(
-          color: Color(0xFF98A1B3),
-          fontSize: 14,
-        ),
+        hintStyle: const TextStyle(color: Color(0xFF98A1B3), fontSize: 14),
         filled: true,
         fillColor: _fillColor(fieldKey),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(
-            color: _borderColor(fieldKey),
-            width: 2,
-          ),
+          borderSide: BorderSide(color: _borderColor(fieldKey), width: 2),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: qBlue,
-            width: 2,
-          ),
+          borderSide: const BorderSide(color: qBlue, width: 2),
         ),
       ),
       style: const TextStyle(

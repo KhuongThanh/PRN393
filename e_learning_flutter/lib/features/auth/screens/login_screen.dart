@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
+
+import '../../../app/routes.dart';
+import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -34,8 +38,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
 
-  bool _loading = false;
-
   @override
   void initState() {
     super.initState();
@@ -60,18 +62,47 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
-    setState(() => _loading = true);
+    final usernameOrEmail = _emailController.text.trim();
+    final password = _passwordController.text;
 
-    await Future.delayed(const Duration(milliseconds: 1200));
+    if (usernameOrEmail.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Vui long nhap day du tai khoan va mat khau.'),
+          ),
+        );
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.login(
+      usernameOrEmail: usernameOrEmail,
+      password: password,
+    );
 
     if (!mounted) return;
-    setState(() => _loading = false);
 
-    Navigator.pushReplacementNamed(context, '/home');
+    if (success) {
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
+      return;
+    }
+
+    final message =
+        authProvider.errorMessage ?? 'Dang nhap that bai. Vui long thu lai.';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final isLoading = authProvider.isLoading;
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
@@ -103,6 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         focusNode: _emailFocus,
                         hintText: 'Nhập email...',
                         obscureText: false,
+                        enabled: !isLoading,
                       ),
 
                       const SizedBox(height: 16),
@@ -114,6 +146,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         focusNode: _passwordFocus,
                         hintText: 'Nhập mật khẩu...',
                         obscureText: true,
+                        enabled: !isLoading,
+                        onSubmitted: (_) => _handleLogin(),
                       ),
 
                       const SizedBox(height: 8),
@@ -140,21 +174,46 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: 12),
 
+                      if (authProvider.errorMessage != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF1F2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFFDA4AF)),
+                          ),
+                          child: Text(
+                            authProvider.errorMessage!,
+                            style: const TextStyle(
+                              color: Color(0xFF9F1239),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: _loading ? null : _handleLogin,
+                          onPressed: isLoading ? null : _handleLogin,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                _loading ? const Color(0xFF9BA7FF) : qBlue,
+                            backgroundColor: isLoading
+                                ? const Color(0xFF9BA7FF)
+                                : qBlue,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: _loading
+                          child: isLoading
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
@@ -234,19 +293,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: [
                           const Text(
                             'Chưa có tài khoản?',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: qGray,
-                            ),
+                            style: TextStyle(fontSize: 13, color: qGray),
                           ),
                           TextButton(
                             onPressed: () {
-                              Navigator.pushNamed(context, '/register');
+                              Navigator.pushNamed(context, AppRoutes.register);
                             },
                             style: TextButton.styleFrom(
                               foregroundColor: qBlue,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                              ),
                               minimumSize: const Size(0, 0),
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
@@ -285,7 +342,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
@@ -314,7 +371,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Text(
             'Học thông minh hơn',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               fontSize: 13,
             ),
           ),
@@ -328,6 +385,8 @@ class _LoginScreenState extends State<LoginScreen> {
     required FocusNode focusNode,
     required String hintText,
     required bool obscureText,
+    bool enabled = true,
+    ValueChanged<String>? onSubmitted,
   }) {
     final bool isFocused = focusNode.hasFocus;
 
@@ -335,6 +394,13 @@ class _LoginScreenState extends State<LoginScreen> {
       controller: controller,
       focusNode: focusNode,
       obscureText: obscureText,
+      enabled: enabled,
+      autocorrect: false,
+      enableSuggestions: !obscureText,
+      textInputAction: obscureText
+          ? TextInputAction.done
+          : TextInputAction.next,
+      onSubmitted: onSubmitted,
       style: const TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w500,
@@ -342,28 +408,22 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: const TextStyle(
-          color: Color(0xFF98A1B3),
-          fontSize: 14,
-        ),
+        hintStyle: const TextStyle(color: Color(0xFF98A1B3), fontSize: 14),
         filled: true,
-        fillColor:
-            isFocused ? const Color(0xFFF0F2FF) : const Color(0xFFFAFAFA),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        fillColor: isFocused
+            ? const Color(0xFFF0F2FF)
+            : const Color(0xFFFAFAFA),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: Color(0xFFD9DBE9),
-            width: 2,
-          ),
+          borderSide: const BorderSide(color: Color(0xFFD9DBE9), width: 2),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: qBlue,
-            width: 2,
-          ),
+          borderSide: const BorderSide(color: qBlue, width: 2),
         ),
       ),
     );
@@ -382,13 +442,8 @@ class _LoginScreenState extends State<LoginScreen> {
         style: OutlinedButton.styleFrom(
           backgroundColor: Colors.white,
           foregroundColor: qDark,
-          side: const BorderSide(
-            color: Color(0xFFD9DBE9),
-            width: 2,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          side: const BorderSide(color: Color(0xFFD9DBE9), width: 2),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -254,11 +254,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.search,
-                    size: 16,
-                    color: focused ? qBlue : qGray,
-                  ),
+                  Icon(Icons.search, size: 16, color: focused ? qBlue : qGray),
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
@@ -269,10 +265,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                       },
                       decoration: const InputDecoration(
                         hintText: 'Tìm học phần...',
-                        hintStyle: TextStyle(
-                          color: qGray,
-                          fontSize: 14,
-                        ),
+                        hintStyle: TextStyle(color: qGray, fontSize: 14),
                         border: InputBorder.none,
                         isCollapsed: true,
                       ),
@@ -290,10 +283,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
           Container(
             decoration: const BoxDecoration(
               border: Border(
-                bottom: BorderSide(
-                  color: Color(0xFFECEEF5),
-                  width: 1.5,
-                ),
+                bottom: BorderSide(color: Color(0xFFECEEF5), width: 1.5),
               ),
             ),
             child: Row(
@@ -351,10 +341,12 @@ class _TopicsScreenState extends State<TopicsScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        ...filteredSets.map((set) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildTopicCard(set),
-            )),
+        ...filteredSets.map(
+          (set) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildTopicCard(set),
+          ),
+        ),
       ],
     );
   }
@@ -393,11 +385,11 @@ class _TopicsScreenState extends State<TopicsScreen> {
                         child: Image.network(
                           set.imageUrl,
                           fit: BoxFit.cover,
-                          color: Colors.black.withOpacity(0.15),
+                          color: Colors.black.withValues(alpha: 0.15),
                           colorBlendMode: BlendMode.darken,
-                          errorBuilder: (_, __, ___) {
+                          errorBuilder: (context, error, stackTrace) {
                             return Container(
-                              color: set.colorBar.withOpacity(0.18),
+                              color: set.colorBar.withValues(alpha: 0.18),
                             );
                           },
                         ),
@@ -413,7 +405,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                           colors: [
-                            set.colorBar.withOpacity(0.75),
+                            set.colorBar.withValues(alpha: 0.75),
                             Colors.transparent,
                           ],
                         ),
@@ -425,10 +417,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                       right: 12,
                       child: Row(
                         children: [
-                          Text(
-                            set.emoji,
-                            style: const TextStyle(fontSize: 18),
-                          ),
+                          Text(set.emoji, style: const TextStyle(fontSize: 18)),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -472,7 +461,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: set.colorBar.withOpacity(0.10),
+                            color: set.colorBar.withValues(alpha: 0.10),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           alignment: Alignment.center,
@@ -510,10 +499,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                   ],
                   Text(
                     '${set.count} thuật ngữ · ${set.author}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: qGray,
-                    ),
+                    style: const TextStyle(fontSize: 11, color: qGray),
                   ),
                   const SizedBox(height: 8),
                   if (set.learned > 0)
@@ -526,8 +512,9 @@ class _TopicsScreenState extends State<TopicsScreen> {
                               minHeight: 4,
                               value: pct / 100,
                               backgroundColor: const Color(0xFFECEEF5),
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(set.colorBar),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                set.colorBar,
+                              ),
                             ),
                           ),
                         ),
@@ -545,15 +532,11 @@ class _TopicsScreenState extends State<TopicsScreen> {
                   else
                     Row(
                       children: const [
-                        Icon(Icons.menu_book_outlined,
-                            size: 12, color: qGray),
+                        Icon(Icons.menu_book_outlined, size: 12, color: qGray),
                         SizedBox(width: 6),
                         Text(
                           'Chưa bắt đầu học',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: qGray,
-                          ),
+                          style: TextStyle(fontSize: 11, color: qGray),
                         ),
                       ],
                     ),
@@ -568,7 +551,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
 
   Widget _sharedChip({required bool onDark}) {
     final bg = onDark
-        ? Colors.white.withOpacity(0.20)
+        ? Colors.white.withValues(alpha: 0.20)
         : const Color(0xFFF0F2FF);
     final fg = onDark ? Colors.white : qBlue;
 
@@ -610,10 +593,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                 borderRadius: BorderRadius.circular(24),
               ),
               alignment: Alignment.center,
-              child: const Text(
-                '🏫',
-                style: TextStyle(fontSize: 36),
-              ),
+              child: const Text('🏫', style: TextStyle(fontSize: 36)),
             ),
             const SizedBox(height: 12),
             const Text(
@@ -628,10 +608,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
             const Text(
               'Tham gia lớp học để học cùng bạn bè',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: qGray,
-              ),
+              style: TextStyle(fontSize: 13, color: qGray),
             ),
             const SizedBox(height: 12),
             Container(
@@ -717,10 +694,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                           const SizedBox(height: 2),
                           Text(
                             '${s.count} thuật ngữ · ${s.author}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: qGray,
-                            ),
+                            style: const TextStyle(fontSize: 12, color: qGray),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -807,7 +781,18 @@ class _CreateTopicSheetState extends State<_CreateTopicSheet> {
 
   String newEmoji = '📚';
 
-  final emojis = const ['📚', '💼', '💻', '✈️', '🍜', '⚽', '🏥', '🎵', '🔬', '🌍'];
+  final emojis = const [
+    '📚',
+    '💼',
+    '💻',
+    '✈️',
+    '🍜',
+    '⚽',
+    '🏥',
+    '🎵',
+    '🔬',
+    '🌍',
+  ];
 
   @override
   void dispose() {
@@ -870,11 +855,7 @@ class _CreateTopicSheetState extends State<_CreateTopicSheet> {
                       color: Color(0xFFF6F7FB),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.close,
-                      size: 16,
-                      color: qGray,
-                    ),
+                    child: const Icon(Icons.close, size: 16, color: qGray),
                   ),
                 ),
               ],
@@ -915,10 +896,7 @@ class _CreateTopicSheetState extends State<_CreateTopicSheet> {
                       ),
                     ),
                     alignment: Alignment.center,
-                    child: Text(
-                      e,
-                      style: const TextStyle(fontSize: 20),
-                    ),
+                    child: Text(e, style: const TextStyle(fontSize: 20)),
                   ),
                 );
               }).toList(),
@@ -942,14 +920,13 @@ class _CreateTopicSheetState extends State<_CreateTopicSheet> {
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 hintText: 'Ví dụ: Từ vựng IELTS...',
-                hintStyle: const TextStyle(
-                  color: qGray,
-                  fontSize: 14,
-                ),
+                hintStyle: const TextStyle(color: qGray, fontSize: 14),
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
@@ -964,10 +941,7 @@ class _CreateTopicSheetState extends State<_CreateTopicSheet> {
                   borderSide: const BorderSide(color: qBlue, width: 1.5),
                 ),
               ),
-              style: const TextStyle(
-                color: qDark,
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: qDark, fontSize: 14),
             ),
             const SizedBox(height: 12),
             const Align(
@@ -987,28 +961,26 @@ class _CreateTopicSheetState extends State<_CreateTopicSheet> {
               maxLines: 2,
               decoration: InputDecoration(
                 hintText: 'Mô tả ngắn về học phần này...',
-                hintStyle: const TextStyle(
-                  color: qGray,
-                  fontSize: 13,
-                ),
+                hintStyle: const TextStyle(color: qGray, fontSize: 13),
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      const BorderSide(color: Color(0xFFECEEF5), width: 1.5),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFECEEF5),
+                    width: 1.5,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: qBlue, width: 1.5),
                 ),
               ),
-              style: const TextStyle(
-                color: qDark,
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: qDark, fontSize: 13),
             ),
             const SizedBox(height: 16),
             GestureDetector(

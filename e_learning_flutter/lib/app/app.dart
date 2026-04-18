@@ -11,6 +11,8 @@ class MyApp extends StatelessWidget {
       title: 'E-Learning',
       initialRoute: AppRoutes.splash,
       routes: AppRoutes.routes,
+      onGenerateRoute: AppRoutes.onGenerateRoute,
+      onUnknownRoute: AppRoutes.onUnknownRoute,
     );
   }
 }
