@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/mock/study_mock_data.dart';
+import '../../../core/models/api_models.dart';
+import '../../../core/services/study_api_service.dart';
 
 class MatchScreen extends StatefulWidget {
   const MatchScreen({super.key, required this.setId});
@@ -14,35 +15,40 @@ class MatchScreen extends StatefulWidget {
 class _MatchScreenState extends State<MatchScreen> {
   static const Color qDark = Color(0xFF2E3856);
   static const Color qGray = Color(0xFF939BB4);
+  static const Color qBlue = Color(0xFF4255FF);
 
-  late final StudySetData set;
-  late final List<StudyCardData> shuffledDefinitions;
+  final StudyApiService _studyApiService = StudyApiService();
+  late Future<_MatchBundle> _matchFuture;
 
-  String? selectedTerm;
-  String? selectedDefinition;
-  final Set<String> matchedTerms = <String>{};
-  int attempts = 0;
+  String? _selectedWordId;
+  String? _selectedMeaning;
+  final Set<String> _matchedWordIds = <String>{};
+  int _attempts = 0;
 
   @override
   void initState() {
     super.initState();
-    set = StudyMockData.findSet(widget.setId);
-    shuffledDefinitions = List<StudyCardData>.from(set.cards)..shuffle();
+    _matchFuture = _loadData();
+  }
+
+  Future<_MatchBundle> _loadData() async {
+    final topic = await _studyApiService.getTopic(widget.setId);
+    final words = await _studyApiService.getWordsByTopic(widget.setId);
+    final shuffled = List<WordItemData>.from(words)..shuffle();
+    return _MatchBundle(topic: topic, words: words, shuffledWords: shuffled);
   }
 
   @override
   Widget build(BuildContext context) {
-    final completed = matchedTerms.length == set.cards.length;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: qDark,
         elevation: 0,
-        title: Text(
-          'Match: ${set.title}',
-          style: const TextStyle(
+        title: const Text(
+          'Match',
+          style: TextStyle(
             color: qDark,
             fontSize: 18,
             fontWeight: FontWeight.w900,
@@ -50,16 +56,36 @@ class _MatchScreenState extends State<MatchScreen> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-          child: completed ? _buildSummary(context) : _buildBoard(),
+        child: FutureBuilder<_MatchBundle>(
+          future: _matchFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (snapshot.hasError || !snapshot.hasData) {
+              return _buildErrorState();
+            }
+
+            final data = snapshot.data!;
+            if (data.words.isEmpty) {
+              return _buildEmptyState();
+            }
+
+            final completed = _matchedWordIds.length == data.words.length;
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+              child: completed ? _buildSummary(data) : _buildBoard(data),
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildBoard() {
-    final progress = matchedTerms.length / set.cards.length;
+  Widget _buildBoard(_MatchBundle data) {
+    final progress = _matchedWordIds.length / data.words.length;
 
     return Column(
       children: [
@@ -72,13 +98,13 @@ class _MatchScreenState extends State<MatchScreen> {
                   minHeight: 10,
                   value: progress,
                   backgroundColor: const Color(0xFFECEEF5),
-                  valueColor: AlwaysStoppedAnimation<Color>(set.accentColor),
+                  valueColor: const AlwaysStoppedAnimation<Color>(qBlue),
                 ),
               ),
             ),
             const SizedBox(width: 12),
             Text(
-              '${matchedTerms.length}/${set.cards.length}',
+              '${_matchedWordIds.length}/${data.words.length}',
               style: const TextStyle(
                 fontSize: 12,
                 color: qGray,
@@ -98,24 +124,16 @@ class _MatchScreenState extends State<MatchScreen> {
           child: Row(
             children: [
               Expanded(
-                child: _infoMetric(
-                  label: 'Matched',
-                  value: '${matchedTerms.length}',
-                  color: const Color(0xFF1DB954),
+                child: _metric(
+                  'Matched',
+                  '${_matchedWordIds.length}',
+                  const Color(0xFF1DB954),
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: _infoMetric(
-                  label: 'Attempts',
-                  value: '$attempts',
-                  color: set.accentColor,
-                ),
-              ),
+              Expanded(child: _metric('Attempts', '$_attempts', qBlue)),
               const SizedBox(width: 12),
-              Expanded(
-                child: _infoMetric(label: 'Mode', value: 'Fast', color: qDark),
-              ),
+              Expanded(child: _metric('Topic', '${data.words.length}', qDark)),
             ],
           ),
         ),
@@ -125,16 +143,20 @@ class _MatchScreenState extends State<MatchScreen> {
             children: [
               Expanded(
                 child: _buildColumn(
-                  title: 'Terms',
-                  children: set.cards.map(_buildTermTile).toList(),
+                  'Words',
+                  data.words
+                      .map((word) => _buildWordTile(word.wordId, word.wordText))
+                      .toList(),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildColumn(
-                  title: 'Definitions',
-                  children: shuffledDefinitions
-                      .map(_buildDefinitionTile)
+                  'Meanings',
+                  data.shuffledWords
+                      .map(
+                        (word) => _buildMeaningTile(word.wordId, word.meaning),
+                      )
                       .toList(),
                 ),
               ),
@@ -145,7 +167,7 @@ class _MatchScreenState extends State<MatchScreen> {
     );
   }
 
-  Widget _buildColumn({required String title, required List<Widget> children}) {
+  Widget _buildColumn(String title, List<Widget> children) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -159,8 +181,8 @@ class _MatchScreenState extends State<MatchScreen> {
             title,
             style: const TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w900,
               color: qDark,
+              fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 10),
@@ -172,9 +194,9 @@ class _MatchScreenState extends State<MatchScreen> {
     );
   }
 
-  Widget _buildTermTile(StudyCardData card) {
-    final isMatched = matchedTerms.contains(card.term);
-    final isSelected = selectedTerm == card.term;
+  Widget _buildWordTile(String wordId, String wordText) {
+    final isMatched = _matchedWordIds.contains(wordId);
+    final isSelected = _selectedWordId == wordId;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -182,11 +204,10 @@ class _MatchScreenState extends State<MatchScreen> {
         onTap: isMatched
             ? null
             : () {
-                setState(() => selectedTerm = card.term);
+                setState(() => _selectedWordId = wordId);
                 _tryMatch();
               },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
+        child: Container(
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -200,12 +221,12 @@ class _MatchScreenState extends State<MatchScreen> {
               color: isMatched
                   ? const Color(0xFF1DB954)
                   : isSelected
-                  ? set.accentColor
+                  ? qBlue
                   : Colors.transparent,
             ),
           ),
           child: Text(
-            card.term,
+            wordText,
             style: TextStyle(
               fontSize: 14,
               color: isMatched ? const Color(0xFF1DB954) : qDark,
@@ -217,9 +238,9 @@ class _MatchScreenState extends State<MatchScreen> {
     );
   }
 
-  Widget _buildDefinitionTile(StudyCardData card) {
-    final isMatched = matchedTerms.contains(card.term);
-    final isSelected = selectedDefinition == card.definition;
+  Widget _buildMeaningTile(String wordId, String meaning) {
+    final isMatched = _matchedWordIds.contains(wordId);
+    final isSelected = _selectedMeaning == meaning;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -227,11 +248,10 @@ class _MatchScreenState extends State<MatchScreen> {
         onTap: isMatched
             ? null
             : () {
-                setState(() => selectedDefinition = card.definition);
+                setState(() => _selectedMeaning = meaning);
                 _tryMatch();
               },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
+        child: Container(
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -245,12 +265,12 @@ class _MatchScreenState extends State<MatchScreen> {
               color: isMatched
                   ? const Color(0xFF1DB954)
                   : isSelected
-                  ? set.accentColor
+                  ? qBlue
                   : Colors.transparent,
             ),
           ),
           child: Text(
-            card.definition,
+            meaning,
             style: TextStyle(
               fontSize: 13,
               color: isMatched ? const Color(0xFF1DB954) : qDark,
@@ -263,7 +283,7 @@ class _MatchScreenState extends State<MatchScreen> {
     );
   }
 
-  Widget _buildSummary(BuildContext context) {
+  Widget _buildSummary(_MatchBundle data) {
     return Column(
       children: [
         Container(
@@ -279,18 +299,18 @@ class _MatchScreenState extends State<MatchScreen> {
                 width: 76,
                 height: 76,
                 decoration: BoxDecoration(
-                  color: set.accentColor.withValues(alpha: 0.10),
+                  color: const Color(0xFFF0F2FF),
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.grid_view_rounded,
                   size: 34,
-                  color: set.accentColor,
+                  color: qBlue,
                 ),
               ),
               const SizedBox(height: 18),
               const Text(
-                'Match finished',
+                'Match complete',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
@@ -299,7 +319,7 @@ class _MatchScreenState extends State<MatchScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'You matched all ${set.cards.length} pairs in $attempts attempts.',
+                'You matched ${data.words.length} API-loaded word pairs in $_attempts attempts.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 13, color: qGray, height: 1.5),
               ),
@@ -319,7 +339,7 @@ class _MatchScreenState extends State<MatchScreen> {
                   ),
                 ),
                 child: const Text(
-                  'Back to set',
+                  'Back to topic',
                   style: TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
@@ -327,9 +347,16 @@ class _MatchScreenState extends State<MatchScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
-                onPressed: _restart,
+                onPressed: () {
+                  setState(() {
+                    _matchedWordIds.clear();
+                    _selectedWordId = null;
+                    _selectedMeaning = null;
+                    _attempts = 0;
+                  });
+                },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: set.accentColor,
+                  backgroundColor: qBlue,
                   foregroundColor: Colors.white,
                   minimumSize: const Size.fromHeight(54),
                   elevation: 0,
@@ -349,11 +376,7 @@ class _MatchScreenState extends State<MatchScreen> {
     );
   }
 
-  Widget _infoMetric({
-    required String label,
-    required String value,
-    required Color color,
-  }) {
+  Widget _metric(String label, String value, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
@@ -384,44 +407,130 @@ class _MatchScreenState extends State<MatchScreen> {
     );
   }
 
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, size: 42, color: qBlue),
+            const SizedBox(height: 12),
+            const Text(
+              'Unable to load match data',
+              style: TextStyle(
+                fontSize: 22,
+                color: qDark,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'The app could not fetch topic words from the API for match mode.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: qGray, height: 1.5),
+            ),
+            const SizedBox(height: 18),
+            ElevatedButton(
+              onPressed: () {
+                setState(() => _matchFuture = _loadData());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: qBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: const Text(
+                'Try again',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.grid_view_rounded, size: 42, color: qBlue),
+            SizedBox(height: 12),
+            Text(
+              'No words available',
+              style: TextStyle(
+                fontSize: 22,
+                color: qDark,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'This topic does not have any vocabulary words to match yet.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: qGray, height: 1.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _tryMatch() {
-    if (selectedTerm == null || selectedDefinition == null) {
+    if (_selectedWordId == null || _selectedMeaning == null) {
       return;
     }
 
-    attempts += 1;
+    _attempts += 1;
 
-    final card = set.cards.firstWhere((item) => item.term == selectedTerm);
-    final isCorrect = card.definition == selectedDefinition;
-
-    if (isCorrect) {
-      setState(() {
-        matchedTerms.add(card.term);
-        selectedTerm = null;
-        selectedDefinition = null;
-      });
-      return;
-    }
-
-    final messenger = ScaffoldMessenger.of(context);
-    setState(() {
-      selectedTerm = null;
-      selectedDefinition = null;
-    });
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: Text('Not this pair yet. Try another one.')),
+    final bundle = _matchFuture;
+    bundle.then((data) {
+      final selectedWord = data.words.firstWhere(
+        (word) => word.wordId == _selectedWordId,
       );
-  }
+      final correct = selectedWord.meaning == _selectedMeaning;
 
-  void _restart() {
-    setState(() {
-      matchedTerms.clear();
-      selectedTerm = null;
-      selectedDefinition = null;
-      attempts = 0;
-      shuffledDefinitions.shuffle();
+      if (!mounted) {
+        return;
+      }
+
+      if (correct) {
+        setState(() {
+          _matchedWordIds.add(selectedWord.wordId);
+          _selectedWordId = null;
+          _selectedMeaning = null;
+        });
+        return;
+      }
+
+      setState(() {
+        _selectedWordId = null;
+        _selectedMeaning = null;
+      });
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Not this pair yet. Try another one.')),
+        );
     });
   }
+}
+
+class _MatchBundle {
+  const _MatchBundle({
+    required this.topic,
+    required this.words,
+    required this.shuffledWords,
+  });
+
+  final TopicSummaryData topic;
+  final List<WordItemData> words;
+  final List<WordItemData> shuffledWords;
 }

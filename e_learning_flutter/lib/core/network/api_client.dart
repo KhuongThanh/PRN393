@@ -47,12 +47,12 @@ class ApiClient {
     return _handleResponse(response);
   }
 
-  Future<dynamic> delete(
-    String path, {
-    bool auth = true,
-  }) async {
+  Future<dynamic> delete(String path, {bool auth = true}) async {
     final uri = _buildUri(path);
-    final response = await http.delete(uri, headers: await _headers(auth: auth));
+    final response = await http.delete(
+      uri,
+      headers: await _headers(auth: auth),
+    );
     return _handleResponse(response);
   }
 
@@ -66,9 +66,7 @@ class ApiClient {
   }
 
   Future<Map<String, String>> _headers({required bool auth}) async {
-    final headers = <String, String>{
-      'Content-Type': 'application/json',
-    };
+    final headers = <String, String>{'Content-Type': 'application/json'};
 
     if (auth) {
       final token = await AppPrefs.getToken();

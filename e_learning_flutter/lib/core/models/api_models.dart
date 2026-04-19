@@ -1,11 +1,10 @@
 class ApiException implements Exception {
-  const ApiException({
-    required this.message,
-    required this.statusCode,
-  });
+  const ApiException({required this.message, required this.statusCode});
 
   final String message;
   final int statusCode;
+
+  bool get isUnauthorized => statusCode == 401 || statusCode == 403;
 
   @override
   String toString() => 'ApiException($statusCode): $message';
@@ -192,6 +191,27 @@ class CurrentUserData {
   final int targetDailyWords;
   final bool isActive;
 
+  CurrentUserData copyWith({
+    String? userName,
+    String? email,
+    List<String>? roles,
+    String? fullName,
+    String? avatarUrl,
+    int? targetDailyWords,
+    bool? isActive,
+  }) {
+    return CurrentUserData(
+      userId: userId,
+      userName: userName ?? this.userName,
+      email: email ?? this.email,
+      roles: roles ?? this.roles,
+      fullName: fullName ?? this.fullName,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      targetDailyWords: targetDailyWords ?? this.targetDailyWords,
+      isActive: isActive ?? this.isActive,
+    );
+  }
+
   factory CurrentUserData.fromJson(Map<String, dynamic> json) {
     return CurrentUserData(
       userId: json['userId']?.toString() ?? '',
@@ -249,6 +269,14 @@ class DashboardData {
     required this.latestQuiz,
   });
 
+  const DashboardData.empty({this.targetDailyWords = 10})
+    : learnedTopicCount = 0,
+      learnedWordCount = 0,
+      favoriteWordCount = 0,
+      todayStudiedWordCount = 0,
+      dailyProgressPercent = 0,
+      latestQuiz = null;
+
   final int learnedTopicCount;
   final int learnedWordCount;
   final int favoriteWordCount;
@@ -256,6 +284,27 @@ class DashboardData {
   final int todayStudiedWordCount;
   final int dailyProgressPercent;
   final LatestQuizResultData? latestQuiz;
+
+  DashboardData copyWith({
+    int? learnedTopicCount,
+    int? learnedWordCount,
+    int? favoriteWordCount,
+    int? targetDailyWords,
+    int? todayStudiedWordCount,
+    int? dailyProgressPercent,
+    LatestQuizResultData? latestQuiz,
+  }) {
+    return DashboardData(
+      learnedTopicCount: learnedTopicCount ?? this.learnedTopicCount,
+      learnedWordCount: learnedWordCount ?? this.learnedWordCount,
+      favoriteWordCount: favoriteWordCount ?? this.favoriteWordCount,
+      targetDailyWords: targetDailyWords ?? this.targetDailyWords,
+      todayStudiedWordCount:
+          todayStudiedWordCount ?? this.todayStudiedWordCount,
+      dailyProgressPercent: dailyProgressPercent ?? this.dailyProgressPercent,
+      latestQuiz: latestQuiz ?? this.latestQuiz,
+    );
+  }
 
   factory DashboardData.fromJson(Map<String, dynamic> json) {
     return DashboardData(
@@ -284,6 +333,15 @@ class ProgressSummaryData {
     required this.lastStudiedAt,
     required this.completionRate,
   });
+
+  const ProgressSummaryData.empty()
+    : totalWords = 0,
+      learnedWords = 0,
+      notLearnedWords = 0,
+      totalCorrectCount = 0,
+      totalIncorrectCount = 0,
+      lastStudiedAt = null,
+      completionRate = 0;
 
   final int totalWords;
   final int learnedWords;
@@ -471,9 +529,7 @@ class FlashcardSessionStartData {
       sessionType: json['sessionType']?.toString() ?? 'Flashcard',
       startedAt: _asDateTime(json['startedAt']) ?? DateTime.now(),
       totalWords: _asInt(json['totalWords']),
-      words: _asMapList(json['words'])
-          .map(FlashcardWordData.fromJson)
-          .toList(),
+      words: _asMapList(json['words']).map(FlashcardWordData.fromJson).toList(),
     );
   }
 }
@@ -630,9 +686,9 @@ class QuizQuestionData {
       displayOrder: _asInt(json['displayOrder']),
       wordId: json['wordId']?.toString(),
       selectedOptionId: json['selectedOptionId']?.toString(),
-      options: _asMapList(json['options'])
-          .map(QuizQuestionOptionData.fromJson)
-          .toList(),
+      options: _asMapList(
+        json['options'],
+      ).map(QuizQuestionOptionData.fromJson).toList(),
     );
   }
 }
@@ -707,6 +763,20 @@ class HomeOverviewData {
   final DashboardData dashboard;
   final ProgressSummaryData progressSummary;
   final List<TopicSummaryData> topics;
+
+  HomeOverviewData copyWith({
+    CurrentUserData? currentUser,
+    DashboardData? dashboard,
+    ProgressSummaryData? progressSummary,
+    List<TopicSummaryData>? topics,
+  }) {
+    return HomeOverviewData(
+      currentUser: currentUser ?? this.currentUser,
+      dashboard: dashboard ?? this.dashboard,
+      progressSummary: progressSummary ?? this.progressSummary,
+      topics: topics ?? this.topics,
+    );
+  }
 }
 
 int _asInt(dynamic value) {

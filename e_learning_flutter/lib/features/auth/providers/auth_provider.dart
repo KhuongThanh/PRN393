@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/constants/api_constants.dart';
+import '../../../core/models/api_models.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/storage/app_prefs.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -16,6 +18,28 @@ class AuthProvider extends ChangeNotifier {
   Future<void> loadToken() async {
     token = await AppPrefs.getToken();
     notifyListeners();
+  }
+
+  Future<bool> restoreSession() async {
+    token = await AppPrefs.getToken();
+    notifyListeners();
+
+    if (!isLoggedIn) {
+      return false;
+    }
+
+    try {
+      await const ApiClient().get('/Auth/me');
+      return true;
+    } on ApiException catch (error) {
+      if (error.isUnauthorized) {
+        await logout();
+        return false;
+      }
+      return true;
+    } catch (_) {
+      return true;
+    }
   }
 
   Future<bool> login({

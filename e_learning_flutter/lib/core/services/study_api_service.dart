@@ -2,21 +2,24 @@ import '../models/api_models.dart';
 import '../network/api_client.dart';
 
 class StudyApiService {
-  StudyApiService({ApiClient? apiClient}) : _apiClient = apiClient ?? const ApiClient();
+  StudyApiService({ApiClient? apiClient})
+    : _apiClient = apiClient ?? const ApiClient();
 
   final ApiClient _apiClient;
 
   Future<HomeOverviewData> fetchHomeOverview() async {
     final currentUser = await getCurrentUser();
-    final dashboard = await getDashboard();
-    final progressSummary = await getProgressSummary();
-    final topics = await getTopics(includeStats: true);
+    final dashboardFuture = _getDashboardOrFallback(
+      currentUser.targetDailyWords,
+    );
+    final progressSummaryFuture = _getProgressSummaryOrFallback();
+    final topicsFuture = _getTopicsOrFallback();
 
     return HomeOverviewData(
       currentUser: currentUser,
-      dashboard: dashboard,
-      progressSummary: progressSummary,
-      topics: topics,
+      dashboard: await dashboardFuture,
+      progressSummary: await progressSummaryFuture,
+      topics: await topicsFuture,
     );
   }
 
@@ -29,19 +32,23 @@ class StudyApiService {
       return items;
     }
 
-    return Future.wait(items.map((topic) async {
-      try {
-        final words = await getWordsByTopic(topic.topicId);
-        final progress = await getTopicProgress(topic.topicId);
-        return topic.copyWith(
-          wordCount: words.length,
-          learnedWords: progress.learnedWords,
-          completionRate: progress.completionRate,
-        );
-      } catch (_) {
-        return topic.copyWith(wordCount: topic.wordCount == 0 ? 0 : topic.wordCount);
-      }
-    }));
+    return Future.wait(
+      items.map((topic) async {
+        try {
+          final words = await getWordsByTopic(topic.topicId);
+          final progress = await getTopicProgress(topic.topicId);
+          return topic.copyWith(
+            wordCount: words.length,
+            learnedWords: progress.learnedWords,
+            completionRate: progress.completionRate,
+          );
+        } catch (_) {
+          return topic.copyWith(
+            wordCount: topic.wordCount == 0 ? 0 : topic.wordCount,
+          );
+        }
+      }),
+    );
   }
 
   Future<TopicSummaryData> getTopic(String topicId) async {
@@ -83,14 +90,18 @@ class StudyApiService {
     int? targetDailyWords,
     String? avatarUrl,
   }) async {
-    final response = await _apiClient.put(
-      '/Auth/profile',
-      body: {
-        if (fullName != null) 'fullName': fullName,
-        if (targetDailyWords != null) 'targetDailyWords': targetDailyWords,
-        if (avatarUrl != null) 'avatarUrl': avatarUrl,
-      },
-    );
+    final body = <String, dynamic>{};
+    if (fullName != null) {
+      body['fullName'] = fullName;
+    }
+    if (targetDailyWords != null) {
+      body['targetDailyWords'] = targetDailyWords;
+    }
+    if (avatarUrl != null) {
+      body['avatarUrl'] = avatarUrl;
+    }
+
+    final response = await _apiClient.put('/Auth/profile', body: body);
     return CurrentUserData.fromJson(_asMap(response));
   }
 
@@ -126,14 +137,12 @@ class StudyApiService {
     required String topicId,
     int? takeCount,
   }) async {
-    final response = await _apiClient.post(
-      '/study-sessions/start',
-      body: {
-        'sourceType': 'Topic',
-        'topicId': topicId,
-        if (takeCount != null) 'takeCount': takeCount,
-      },
-    );
+    final body = <String, dynamic>{'sourceType': 'Topic', 'topicId': topicId};
+    if (takeCount != null) {
+      body['takeCount'] = takeCount;
+    }
+
+    final response = await _apiClient.post('/study-sessions/start', body: body);
     return FlashcardSessionStartData.fromJson(_asMap(response));
   }
 
@@ -165,7 +174,9 @@ class StudyApiService {
   }
 
   Future<List<QuizQuestionData>> getQuizQuestions(String attemptId) async {
-    final response = await _apiClient.get('/quiz-attempts/$attemptId/questions');
+    final response = await _apiClient.get(
+      '/quiz-attempts/$attemptId/questions',
+    );
     return _asMapList(response).map(QuizQuestionData.fromJson).toList();
   }
 
@@ -176,10 +187,7 @@ class StudyApiService {
   }) async {
     final response = await _apiClient.post(
       '/quiz-attempts/$attemptId/answers',
-      body: {
-        'questionId': questionId,
-        'selectedOptionId': selectedOptionId,
-      },
+      body: {'questionId': questionId, 'selectedOptionId': selectedOptionId},
     );
     return QuizAnswerResultData.fromJson(_asMap(response));
   }
@@ -187,6 +195,40 @@ class StudyApiService {
   Future<QuizSubmitResultData> submitQuiz(String attemptId) async {
     final response = await _apiClient.post('/quiz-attempts/$attemptId/submit');
     return QuizSubmitResultData.fromJson(_asMap(response));
+  }
+
+  Future<DashboardData> _getDashboardOrFallback(int targetDailyWords) async {
+    try {
+      return await getDashboard();
+    } on ApiException catch (error) {
+      if (error.isUnauthorized) {
+        rethrow;
+      }
+      return DashboardData.empty(targetDailyWords: targetDailyWords);
+    } catch (_) {
+      return DashboardData.empty(targetDailyWords: targetDailyWords);
+    }
+  }
+
+  Future<ProgressSummaryData> _getProgressSummaryOrFallback() async {
+    try {
+      return await getProgressSummary();
+    } on ApiException catch (error) {
+      if (error.isUnauthorized) {
+        rethrow;
+      }
+      return const ProgressSummaryData.empty();
+    } catch (_) {
+      return const ProgressSummaryData.empty();
+    }
+  }
+
+  Future<List<TopicSummaryData>> _getTopicsOrFallback() async {
+    try {
+      return await getTopics(includeStats: true);
+    } catch (_) {
+      return const [];
+    }
   }
 }
 

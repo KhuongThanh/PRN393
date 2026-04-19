@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/mock/study_mock_data.dart';
+import '../../../core/models/api_models.dart';
+import '../../../core/services/study_api_service.dart';
 
 class WriteScreen extends StatefulWidget {
   const WriteScreen({super.key, required this.setId});
@@ -16,33 +17,44 @@ class _WriteScreenState extends State<WriteScreen> {
   static const Color qDark = Color(0xFF2E3856);
   static const Color qGray = Color(0xFF939BB4);
 
-  final TextEditingController answerController = TextEditingController();
+  final StudyApiService _studyApiService = StudyApiService();
+  final TextEditingController _answerController = TextEditingController();
+  late Future<_WriteBundle> _writeFuture;
 
-  int currentIndex = 0;
-  int correctCount = 0;
-  bool checked = false;
-  bool isCorrect = false;
+  int _currentIndex = 0;
+  int _correctCount = 0;
+  bool _checked = false;
+  bool _isCorrect = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _writeFuture = _loadData();
+  }
 
   @override
   void dispose() {
-    answerController.dispose();
+    _answerController.dispose();
     super.dispose();
+  }
+
+  Future<_WriteBundle> _loadData() async {
+    final topic = await _studyApiService.getTopic(widget.setId);
+    final words = await _studyApiService.getWordsByTopic(widget.setId);
+    return _WriteBundle(topic: topic, words: words);
   }
 
   @override
   Widget build(BuildContext context) {
-    final set = StudyMockData.findSet(widget.setId);
-    final completed = currentIndex >= set.cards.length;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: qDark,
         elevation: 0,
-        title: Text(
-          'Write: ${set.title}',
-          style: const TextStyle(
+        title: const Text(
+          'Write',
+          style: TextStyle(
             color: qDark,
             fontSize: 18,
             fontWeight: FontWeight.w900,
@@ -50,17 +62,37 @@ class _WriteScreenState extends State<WriteScreen> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-          child: completed ? _buildSummary(context, set) : _buildPrompt(set),
+        child: FutureBuilder<_WriteBundle>(
+          future: _writeFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (snapshot.hasError || !snapshot.hasData) {
+              return _buildErrorState();
+            }
+
+            final data = snapshot.data!;
+            if (data.words.isEmpty) {
+              return _buildEmptyState();
+            }
+
+            final completed = _currentIndex >= data.words.length;
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+              child: completed ? _buildSummary(data) : _buildPrompt(data),
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildPrompt(StudySetData set) {
-    final card = set.cards[currentIndex];
-    final progress = (currentIndex + 1) / set.cards.length;
+  Widget _buildPrompt(_WriteBundle data) {
+    final word = data.words[_currentIndex];
+    final progress = (_currentIndex + 1) / data.words.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -80,7 +112,7 @@ class _WriteScreenState extends State<WriteScreen> {
             ),
             const SizedBox(width: 12),
             Text(
-              '${currentIndex + 1}/${set.cards.length}',
+              '${_currentIndex + 1}/${data.words.length}',
               style: const TextStyle(
                 fontSize: 12,
                 color: qGray,
@@ -110,7 +142,7 @@ class _WriteScreenState extends State<WriteScreen> {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: const Text(
-                  'Type the correct term',
+                  'Type the correct word',
                   style: TextStyle(
                     fontSize: 11,
                     color: qBlue,
@@ -120,7 +152,7 @@ class _WriteScreenState extends State<WriteScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                card.definition,
+                word.meaning,
                 style: const TextStyle(
                   fontSize: 25,
                   color: qDark,
@@ -130,14 +162,17 @@ class _WriteScreenState extends State<WriteScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                card.example,
-                style: const TextStyle(fontSize: 13, color: qGray, height: 1.5),
+                word.partOfSpeech?.trim().isNotEmpty == true
+                    ? 'Part of speech: ${word.partOfSpeech}'
+                    : 'Use your memory to type the matching word.',
+                style: const TextStyle(fontSize: 13, color: qGray),
               ),
               const SizedBox(height: 18),
               TextField(
-                controller: answerController,
-                enabled: !checked,
-                onSubmitted: (_) => checked ? _next() : _checkAnswer(set),
+                controller: _answerController,
+                enabled: !_checked,
+                onSubmitted: (_) =>
+                    _checked ? _next(data.words.length) : _check(word),
                 decoration: InputDecoration(
                   hintText: 'Type your answer here',
                   filled: true,
@@ -152,41 +187,28 @@ class _WriteScreenState extends State<WriteScreen> {
                   ),
                 ),
               ),
-              if (checked) ...[
+              if (_checked) ...[
                 const SizedBox(height: 14),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isCorrect
+                    color: _isCorrect
                         ? const Color(0xFFEFFFF5)
                         : const Color(0xFFFFF2F2),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isCorrect
+                  ),
+                  child: Text(
+                    _isCorrect
+                        ? 'Correct! The API word matched your answer.'
+                        : 'Expected answer: ${word.wordText}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _isCorrect
                           ? const Color(0xFF1DB954)
                           : const Color(0xFFFF6B6B),
+                      fontWeight: FontWeight.w800,
                     ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isCorrect ? 'Correct answer' : 'Keep practicing',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: isCorrect
-                              ? const Color(0xFF1DB954)
-                              : const Color(0xFFFF6B6B),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Expected term: ${card.term}',
-                        style: const TextStyle(fontSize: 12, color: qDark),
-                      ),
-                    ],
                   ),
                 ),
               ],
@@ -197,7 +219,7 @@ class _WriteScreenState extends State<WriteScreen> {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: checked ? _next : () => _checkAnswer(set),
+            onPressed: () => _checked ? _next(data.words.length) : _check(word),
             style: ElevatedButton.styleFrom(
               backgroundColor: qBlue,
               foregroundColor: Colors.white,
@@ -208,10 +230,10 @@ class _WriteScreenState extends State<WriteScreen> {
               ),
             ),
             child: Text(
-              checked
-                  ? (currentIndex == set.cards.length - 1
+              _checked
+                  ? (_currentIndex == data.words.length - 1
                         ? 'Finish write mode'
-                        : 'Next card')
+                        : 'Next word')
                   : 'Check answer',
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
@@ -221,9 +243,8 @@ class _WriteScreenState extends State<WriteScreen> {
     );
   }
 
-  Widget _buildSummary(BuildContext context, StudySetData set) {
-    final total = set.cards.length;
-    final accuracy = total == 0 ? 0 : ((correctCount / total) * 100).round();
+  Widget _buildSummary(_WriteBundle data) {
+    final accuracy = ((_correctCount / data.words.length) * 100).round();
 
     return Column(
       children: [
@@ -260,9 +281,23 @@ class _WriteScreenState extends State<WriteScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'You wrote $correctCount correct answers with $accuracy% accuracy.',
+                'You typed $_correctCount correct answers from ${data.words.length} words loaded by the API.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 13, color: qGray, height: 1.5),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(child: _metric('Correct', '$_correctCount', qBlue)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _metric(
+                      'Accuracy',
+                      '$accuracy%',
+                      const Color(0xFF1DB954),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -280,7 +315,7 @@ class _WriteScreenState extends State<WriteScreen> {
                   ),
                 ),
                 child: const Text(
-                  'Back to set',
+                  'Back to topic',
                   style: TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
@@ -288,7 +323,15 @@ class _WriteScreenState extends State<WriteScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
-                onPressed: _restart,
+                onPressed: () {
+                  setState(() {
+                    _currentIndex = 0;
+                    _correctCount = 0;
+                    _checked = false;
+                    _isCorrect = false;
+                    _answerController.clear();
+                  });
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: qBlue,
                   foregroundColor: Colors.white,
@@ -310,36 +353,147 @@ class _WriteScreenState extends State<WriteScreen> {
     );
   }
 
-  void _checkAnswer(StudySetData set) {
-    final answer = answerController.text.trim().toLowerCase();
-    final expected = set.cards[currentIndex].term.trim().toLowerCase();
+  Widget _metric(String title, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FE),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 11,
+              color: qGray,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              color: color,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, size: 42, color: qBlue),
+            const SizedBox(height: 12),
+            const Text(
+              'Unable to load write mode',
+              style: TextStyle(
+                fontSize: 22,
+                color: qDark,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'The app could not fetch topic words from the API for write mode.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: qGray, height: 1.5),
+            ),
+            const SizedBox(height: 18),
+            ElevatedButton(
+              onPressed: () {
+                setState(() => _writeFuture = _loadData());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: qBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: const Text(
+                'Try again',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.edit_note_outlined, size: 42, color: qBlue),
+            SizedBox(height: 12),
+            Text(
+              'No words available',
+              style: TextStyle(
+                fontSize: 22,
+                color: qDark,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'This topic does not have any vocabulary words to practice with.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: qGray, height: 1.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _check(WordItemData word) {
+    final answer = _answerController.text.trim().toLowerCase();
+    final expected = word.wordText.trim().toLowerCase();
     final correct = answer == expected;
 
     setState(() {
-      checked = true;
-      isCorrect = correct;
+      _checked = true;
+      _isCorrect = correct;
       if (correct) {
-        correctCount += 1;
+        _correctCount += 1;
       }
     });
   }
 
-  void _next() {
-    setState(() {
-      currentIndex += 1;
-      checked = false;
-      isCorrect = false;
-      answerController.clear();
-    });
-  }
+  void _next(int totalWords) {
+    if (_currentIndex >= totalWords - 1) {
+      setState(() {
+        _currentIndex = totalWords;
+      });
+      return;
+    }
 
-  void _restart() {
     setState(() {
-      currentIndex = 0;
-      correctCount = 0;
-      checked = false;
-      isCorrect = false;
-      answerController.clear();
+      _currentIndex += 1;
+      _checked = false;
+      _isCorrect = false;
+      _answerController.clear();
     });
   }
+}
+
+class _WriteBundle {
+  const _WriteBundle({required this.topic, required this.words});
+
+  final TopicSummaryData topic;
+  final List<WordItemData> words;
 }
